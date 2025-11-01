@@ -499,14 +499,15 @@ spec:
           restartPolicy: OnFailure
 """,
     "requirements.txt": """
-fastapi==0.104.1
-uvicorn==0.24.0
+fastapi==0.115.5
+uvicorn==0.30.4
 python-json-logger==2.0.7
 opentelemetry-api==1.21.0
 opentelemetry-sdk==1.21.0
 opentelemetry-instrumentation-fastapi==0.42b0
 prometheus-client==0.19.0
 pytest==7.4.3
+pytest-asyncio==0.23.8
 hypothesis==6.92.0
 sops==0.7.0  # Assume version
 networkx==3.2.1
