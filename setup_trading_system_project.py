@@ -501,6 +501,8 @@ spec:
     "requirements.txt": """
 fastapi==0.115.5
 uvicorn==0.30.4
+pydantic==2.9.2
+pydantic-core==2.23.4
 python-json-logger==2.0.7
 opentelemetry-api==1.21.0
 opentelemetry-sdk==1.21.0
