@@ -104,7 +104,39 @@ jobs:
         kubectl apply -f k8s/deployment_security.yaml
         kubectl apply -f k8s/network_policy.yaml
 """,
+    "app/compat.py": """
+import sys
+import typing
+
+
+def patch_forward_ref():
+    if sys.version_info < (3, 13):
+        return
+
+    forward_ref = getattr(typing, "ForwardRef", None)
+    if forward_ref is None:
+        return
+
+    original = getattr(forward_ref, "_evaluate", None)
+    if original is None:
+        return
+
+    if getattr(original, "__patched_for_py313__", False):
+        return
+
+    def _evaluate(self, globalns, localns, recursive_guard=None):
+        if recursive_guard is None:
+            recursive_guard = set()
+        return original(self, globalns, localns, recursive_guard)
+
+    _evaluate.__patched_for_py313__ = True
+    forward_ref._evaluate = _evaluate  # type: ignore[attr-defined]
+
+
+patch_forward_ref()
+""",
     "app/main.py": """
+from app import compat  # noqa: F401
 import os
 import time
 import uuid
@@ -499,10 +531,8 @@ spec:
           restartPolicy: OnFailure
 """,
     "requirements.txt": """
-fastapi==0.115.5
-uvicorn==0.30.4
-pydantic==2.9.2
-pydantic-core==2.23.4
+fastapi==0.104.1
+uvicorn==0.24.0
 python-json-logger==2.0.7
 opentelemetry-api==1.21.0
 opentelemetry-sdk==1.21.0
