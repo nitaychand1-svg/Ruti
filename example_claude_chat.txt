@@ -1,0 +1,43 @@
+User: Как создать веб-приложение на Python?
+
+Assistant: Для создания веб-приложения на Python можно использовать несколько фреймворков:
+
+1. **Flask** - легковесный и гибкий фреймворк
+2. **Django** - полнофункциональный фреймворк с ORM
+3. **FastAPI** - современный фреймворк для API
+
+Вот простой пример на Flask:
+
+```python
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route('/')
+def hello():
+    return 'Hello, World!'
+
+if __name__ == '__main__':
+    app.run()
+```
+
+User: А как добавить базу данных?
+
+Assistant: Для работы с базой данных в Flask можно использовать SQLAlchemy:
+
+```python
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///example.db'
+db = SQLAlchemy(app)
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True)
+
+db.create_all()
+```
+
+Также можно использовать Django ORM или другие библиотеки в зависимости от ваших потребностей.
