@@ -416,12 +416,20 @@ def setup_tracing(otlp_endpoint=None):
 """,
     "app/modules/data_sources.py": """
 import asyncio
-from functools import lru_cache
+from typing import Dict, List
 
-@lru_cache(maxsize=100)
-async def async_fetch_news(ticker):
+# Simple cache for async function (lru_cache doesn't work with async)
+_cache: Dict[str, List[str]] = {}
+
+async def async_fetch_news(ticker: str) -> List[str]:
+    if ticker in _cache:
+        return _cache[ticker]
     await asyncio.sleep(0.05)
-    return [f"News for {ticker}: Market up 2%."]
+    result = [f"News for {ticker}: Market up 2%."]
+    # Simple cache with size limit
+    if len(_cache) < 100:
+        _cache[ticker] = result
+    return result
 """,
     "app/modules/api_routes.py": """
 from fastapi import APIRouter, Request, Query
@@ -621,7 +629,27 @@ def main():
         write_text_file(relative_path, raw_content)
     for relative_path in EMPTY_FILES:
         create_empty_file(relative_path)
-    print("Done")
+    
+    # Create __init__.py files for Python packages
+    init_files = [
+        "app/__init__.py",
+        "app/modules/__init__.py",
+        "app/tasks/__init__.py",
+        "app/tests/__init__.py",
+    ]
+    for init_file in init_files:
+        write_text_file(init_file, "# Python package\n")
+    
+    print("\n" + "=" * 60)
+    print("✅ Project setup complete!")
+    print(f"📁 Project location: {BASE_DIR}")
+    print("=" * 60)
+    print("\nNext steps:")
+    print("1. Install dependencies: pip install -r requirements.txt")
+    print("2. Run tests: pytest app/tests/")
+    print("3. Start server: uvicorn app.main:app --host 0.0.0.0 --port 8000")
+    print("\n⚠️  Note: Some dependencies may not be available in Pydroid 3")
+    print("   You can still view and edit the code structure.")
 
 
 if __name__ == "__main__":

@@ -426,12 +426,20 @@ def setup_tracing(otlp_endpoint=None):
 """,
     
     "app/modules/data_sources.py": """import asyncio
-from functools import lru_cache
+from typing import Dict, List
 
-@lru_cache(maxsize=100)
-async def async_fetch_news(ticker):
+# Simple cache for async function (lru_cache doesn't work with async)
+_cache: Dict[str, List[str]] = {}
+
+async def async_fetch_news(ticker: str) -> List[str]:
+    if ticker in _cache:
+        return _cache[ticker]
     await asyncio.sleep(0.05)
-    return [f"News for {ticker}: Market up 2%."]
+    result = [f"News for {ticker}: Market up 2%."]
+    # Simple cache with size limit
+    if len(_cache) < 100:
+        _cache[ticker] = result
+    return result
 """,
     
     "app/modules/api_routes.py": """from fastapi import APIRouter, Request, Query
