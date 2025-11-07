@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trading-system
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+      - name: trading-system
+        image: ghcr.io/your-repo/trading-system:latest  # Or use ${{ github.sha }}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "1"
+            memory: "1Gi"

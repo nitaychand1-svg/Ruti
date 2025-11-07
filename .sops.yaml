@@ -1,0 +1,7 @@
+creation_rules:
+  - path_regex: ".*config\.yaml$"
+    pgp: []
+    azure_kv: []
+    gcp_kms: []
+    kms: []
+    encrypted_regex: "^(data|secrets)$"

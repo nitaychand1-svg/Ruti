@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: vault-rotation
+  namespace: trading-system
+spec:
+  schedule: "*/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: vault-rotation-sa
+          containers:
+          - name: vault-rotation
+            image: vault:1.13.0
+            env:
+            - name: VAULT_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  name: vault-config
+                  key: address
+            - name: VAULT_ROLE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: vault-credentials
+                  key: role_id
+            - name: VAULT_SECRET_ID
+              valueFrom:
+                secretKeyRef:
+                  name: vault-credentials
+                  key: secret_id
+            command:
+              - "/bin/sh"
+              - "-c"
+              - |
+                set -euo pipefail
+                TOKEN=$(vault write -field=client_token auth/approle/login role_id=$VAULT_ROLE_ID secret_id=$VAULT_SECRET_ID)
+                NEW_SECRET=$(vault kv put -field=key secret/trading/api_key value="new_value")
+                kubectl create secret generic trading-api-key --from-literal=API_KEY=$NEW_SECRET -n trading-system --dry-run=client -o yaml | kubectl apply -f -
+          restartPolicy: OnFailure

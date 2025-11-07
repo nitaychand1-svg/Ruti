@@ -1,0 +1,67 @@
+name: Build and Push Trading System
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.13"
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install fastapi uvicorn python-json-logger opentelemetry-api opentelemetry-sdk opentelemetry-instrumentation-fastapi prometheus-client pytest hypothesis sops networkx
+
+    - name: Generate requirements.txt
+      run: pip freeze > requirements.txt
+
+    - name: Install Syft
+      run: curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+    - name: Generate SBOM
+      run: syft packages dir:. -o json > sbom.json
+
+    - name: Upload SBOM
+      uses: actions/upload-artifact@v4
+      with:
+        name: sbom
+        path: sbom.json
+
+    - name: Run tests
+      run: pytest app/tests/
+
+    - name: Build Docker image
+      run: docker build -t ${{ secrets.DOCKER_REGISTRY }}/trading-system:${{ github.sha }} .
+
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@v2
+
+    - name: Cosign sign
+      env:
+        IMAGE: ${{ secrets.DOCKER_REGISTRY }}/trading-system:${{ github.sha }}
+      run: cosign sign --keyless $IMAGE
+
+    - name: Push Docker image
+      run: docker push ${{ secrets.DOCKER_REGISTRY }}/trading-system:${{ github.sha }}
+
+    - name: Decrypt SOPS config
+      if: exists('app/config.yaml.enc')
+      run: sops --decrypt --output app/config.yaml app/config.yaml.enc
+
+    - name: Apply Kubernetes manifests
+      run: |
+        kubectl apply -f k8s/deployment_security.yaml
+        kubectl apply -f k8s/network_policy.yaml
