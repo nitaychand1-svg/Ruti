@@ -1,0 +1,19 @@
+# ACTS v6.0 — Complete Integration
+# Requirements for Adaptive Causal Trading System v6.0
+
+# Core dependencies
+numpy>=1.24.0
+torch>=2.0.0
+
+# Optional but recommended for full functionality:
+# transformers>=4.30.0  # For RoBERTa, Whisper
+# clip-by-openai>=1.0  # For CLIP vision model
+# faiss-cpu>=1.7.4  # For vector database (or faiss-gpu for GPU)
+# networkx>=3.0  # For graph operations
+
+# Development and testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+
+# Logging and utilities
+python-dateutil>=2.8.0
