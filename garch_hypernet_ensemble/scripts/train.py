@@ -1,46 +1,50 @@
 #!/usr/bin/env python3
 """Production training script."""
-from __future__ import annotations
-
-import argparse
 import asyncio
-from pathlib import Path
+import argparse
+import yaml
+import sys
+import os
 
-import numpy as np
-import pandas as pd
+# Add parent directory to path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.core.config import load_config
 from src.core.orchestrator import GARCHHyperAdaptiveEnsemble
+from src.core.config import load_config
 
-
-async def async_main(args: argparse.Namespace) -> None:
-    config = load_config(args.config)
-    ensemble = GARCHHyperAdaptiveEnsemble(config)
-
-    data_path = Path(args.data_path)
-    if not data_path.exists():
-        raise FileNotFoundError(f"Data file not found: {data_path}")
-
-    df = pd.read_parquet(data_path)
-    if "target" not in df.columns:
-        raise ValueError("Dataset must contain a 'target' column")
-
-    X = df.drop(columns=["target"]).to_numpy(dtype=np.float32)
-    y = df["target"].to_numpy(dtype=int)
-    features = df.drop(columns=["target"]).columns.tolist()
-
-    result = await ensemble.train(X, y, features)
-    print(f"✅ Training completed: {result}")
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Train the GARCH HyperNetwork Ensemble")
-    parser.add_argument("--config", default="configs/production.yaml", help="Config path")
-    parser.add_argument("--data-path", required=True, help="Path to parquet dataset")
+async def main():
+    parser = argparse.ArgumentParser(description='Train GARCH-HyperNetwork Ensemble')
+    parser.add_argument('--config', default='configs/production.yaml', 
+                       help='Path to config file')
+    parser.add_argument('--data-path', required=True,
+                       help='Path to training data (parquet format)')
+    parser.add_argument('--target-column', default='target',
+                       help='Name of target column')
     args = parser.parse_args()
+    
+    print(f"Loading config from {args.config}...")
+    config = load_config(args.config)
+    
+    print("Initializing ensemble...")
+    ensemble = GARCHHyperAdaptiveEnsemble(config)
+    
+    # Load data
+    print(f"Loading data from {args.data_path}...")
+    import pandas as pd
+    df = pd.read_parquet(args.data_path)
+    
+    X = df.drop(args.target_column, axis=1).values
+    y = df[args.target_column].values
+    features = df.drop(args.target_column, axis=1).columns.tolist()
+    
+    print(f"Training on {len(X)} samples with {len(features)} features...")
+    
+    # Train
+    result = await ensemble.train(X, y, features)
+    
+    print(f"✅ Training completed successfully!")
+    print(f"   Version: {result['version']}")
+    print(f"   OOS Score: {result.get('oos_score', 'N/A'):.4f}")
 
-    asyncio.run(async_main(args))
-
-
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    asyncio.run(main())

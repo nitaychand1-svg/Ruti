@@ -4,7 +4,6 @@ ensemble:
   garch_window: 252
   garch_min_obs: 100
   enable_garch_forecast: true
-  min_oos_score: 0.55
 
 hypernet:
   meta_dim: 8
