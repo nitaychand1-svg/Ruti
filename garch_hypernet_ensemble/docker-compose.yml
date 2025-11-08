@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  garch-ensemble:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./models:/app/models
+      - ./logs:/var/log/garch_ensemble
+      - ./configs:/app/configs
+    environment:
+      - ENVIRONMENT=production
+      - ALERT_WEBHOOK=${ALERT_WEBHOOK:-}
+    restart: unless-stopped
+    depends_on:
+      - cache
+  
+  cache:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  redis_data:
