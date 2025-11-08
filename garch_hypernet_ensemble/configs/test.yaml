@@ -1,0 +1,32 @@
+ensemble:
+  n_base_models: 8
+  garch_window: 60
+  garch_min_obs: 20
+  enable_garch_forecast: false
+  prune_threshold: 0.4
+  model_version: "test"
+
+hypernet:
+  meta_dim: 8
+  hidden_dims: [32, 16]
+  dropout: 0.1
+  learning_rate: 0.001
+  adaptation_rate: 0.05
+
+risk_management:
+  max_position_size: 0.1
+  max_risk_per_trade: 0.01
+  transaction_cost: 0.0005
+  slippage_factor: 0.005
+
+monitoring:
+  window_size: 20
+  enable_shap: false
+  enable_prometheus: false
+  max_correlation_threshold: 0.85
+  min_confidence_threshold: 0.55
+  min_diversity_threshold: 0.2
+
+cache:
+  ttl_seconds: 60
+  maxsize: 128
