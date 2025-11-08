@@ -1,0 +1,57 @@
+# ACTS v6.0 — Complete Dependencies
+
+# Core ML/DL
+torch>=2.0.0
+numpy>=1.24.0
+scipy>=1.10.0
+
+# NLP & Transformers (optional, for full multi-modal support)
+transformers>=4.30.0
+tokenizers>=0.13.0
+sentencepiece>=0.1.99
+
+# Vision (optional, for CLIP support)
+# clip @ git+https://github.com/openai/CLIP.git
+
+# Data processing
+pandas>=2.0.0
+scikit-learn>=1.3.0
+
+# Vector database (optional, for FAISS support)
+# faiss-cpu>=1.7.4  # or faiss-gpu for GPU support
+
+# Async & concurrency
+aiohttp>=3.8.0
+asyncio>=3.4.3
+
+# Utilities
+pyyaml>=6.0
+python-dateutil>=2.8.0
+tqdm>=4.65.0
+
+# Logging & monitoring
+loguru>=0.7.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+
+# Type checking
+mypy>=1.4.0
+types-PyYAML
+
+# Code quality
+black>=23.0.0
+flake8>=6.0.0
+isort>=5.12.0
+
+# Optional: for production deployment
+# fastapi>=0.100.0
+# uvicorn>=0.23.0
+# prometheus-client>=0.17.0
+
+# Optional: for blockchain/ZKP
+# web3>=6.0.0
+
+# Optional: for distributed training
+# ray[default]>=2.6.0

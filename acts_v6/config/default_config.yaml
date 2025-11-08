@@ -1,0 +1,134 @@
+# ACTS v6.0 — Default Configuration
+
+system:
+  name: "ACTS_v6.0_Complete"
+  version: "6.0.0"
+  device: "cuda"  # or "cpu"
+  use_pretrained: false  # Set to true to use RoBERTa, CLIP, etc.
+
+model:
+  input_dim: 100
+  n_assets: 10
+  hidden_dim: 128
+  n_regimes: 3  # bull, normal, crisis
+  
+  # Bayesian settings
+  prior_sigma: 0.1
+  n_mc_samples: 10
+  
+  # ELBO training
+  learning_rate: 0.0001
+  kl_weight_start: 0.0
+  kl_weight_end: 1.0
+  anneal_steps: 1000
+
+perception:
+  multi_modal:
+    text_dim: 768
+    vision_dim: 512
+    audio_dim: 256
+    fusion_dim: 4096
+  
+  max_news_articles: 10
+  max_text_length: 128
+
+strategy:
+  debate:
+    n_agents: 6
+    n_rounds: 3
+    llm_backend: "grok-2"
+    agents:
+      - bull
+      - bear
+      - risk
+      - ethical
+      - innovation
+      - macro
+
+execution:
+  marl:
+    n_agents: 5
+    buffer_size: 100000
+    urgency_levels:
+      - low
+      - normal
+      - high
+      - urgent
+
+causal:
+  intervention:
+    default_horizon: 30
+    n_mc_samples: 10000
+  
+  world_model:
+    asset_entities:
+      - BTC
+      - SPY
+      - GLD
+      - USDT
+    
+    entity_types:
+      - asset
+      - country
+      - central_bank
+      - corporation
+      - event
+
+memory:
+  episodic:
+    backend: "simple"  # or "faiss"
+    embedding_dim: 512
+    max_episodes: 100000
+    top_k_recall: 10
+
+risk:
+  existential:
+    scenarios:
+      - solar_flare
+      - cyber_attack
+      - quantum_break
+      - agi_disruption
+      - hyperinflation
+    
+    n_samples: 10000
+    importance_sampling: true
+  
+  var:
+    confidence: 0.95
+    horizon_days: 1
+
+self_improvement:
+  evolution:
+    sharpe_threshold: 1.5
+    monitoring_window: 30
+    triggers:
+      - underperformance
+      - drift_detection
+      - execution_inefficiency
+
+adaptive_sampling:
+  min_samples: 1000
+  max_samples: 50000
+  entropy_threshold_low: 0.05
+  entropy_threshold_high: 0.15
+  latency_budget_ms: 500
+
+federated:
+  n_participants: 5
+  privacy_budget: 10.0
+
+human_interface:
+  llm_backend: "grok-2"
+  max_conversation_history: 100
+
+performance_targets:
+  latency_p95_ms: 500
+  oos_sharpe: 2.4
+  max_drawdown: 0.07
+  regime_accuracy: 0.97
+  ami_score: 0.90
+
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  file: "logs/acts_v6.log"
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
