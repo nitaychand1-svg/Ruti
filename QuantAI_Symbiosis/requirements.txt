@@ -1,0 +1,6 @@
+numpy
+torch
+transformers
+clip
+faiss-cpu
+statsmodels
