@@ -67,14 +67,17 @@ class EnsemblePredictor:
                 return self._emergency_fallback("extreme_volatility")
 
             # [FIX-5] Check active models
-            active_models = self._get_active_models()
-            if len(active_models) < 5:
-                self.logger.warning("[FIX-5] Low active models: %d", len(active_models))
+            active_models, active_count = self._get_active_models()
+            if active_count < 5:
+                self.logger.warning("[FIX-5] Low active models: %d", active_count)
                 return self._fallback_rule_based(X)
 
             # Get base predictions
             base_predictions, base_confidences, model_ids = await self._get_base_predictions(
                 active_models, X
+            )
+            active_mask = np.array(
+                [1.0 if m.get("is_active") else 0.0 for m in active_models], dtype=float
             )
 
             # [FIX-19] Diversity metrics
@@ -96,6 +99,7 @@ class EnsemblePredictor:
                 garch_vol,
                 garch_forecast,
                 len(active_models),
+                active_count,
             )
 
             # HyperNetwork prediction
@@ -114,11 +118,12 @@ class EnsemblePredictor:
                 )
 
                 model_weights = dynamic_weights.numpy()[0]
+                model_weights = self._apply_active_mask(model_weights, active_mask)
 
                 # [FIX-4] Update correlation matrix
                 self.components.hypernetwork.update_correlation_matrix(corr_matrix)
             else:
-                model_weights = np.ones(len(active_models)) / len(active_models)
+                model_weights = self._uniform_weights(active_mask)
                 dynamic_thresholds = np.array([[0.85, 0.55, 0.10]])
 
             # Blender prediction
@@ -132,7 +137,9 @@ class EnsemblePredictor:
             calibrated_pred = self._regime_specific_calibration(final_pred, market_regime)
 
             # [FIX-16] Position sizing
-            position_size = self._calculate_position_size(calibrated_pred, base_predictions)
+            position_size = self._calculate_position_size(
+                calibrated_pred, base_predictions, active_mask
+            )
 
             # [FIX-19] Effective bets
             effective_bets = self._calculate_effective_bets(model_weights, corr_matrix)
@@ -146,9 +153,9 @@ class EnsemblePredictor:
                 "diversity": diversity,
                 "garch_volatility": garch_vol,
                 "regime": market_regime,
-                "active_models": len(active_models),
+                "active_models": int(active_count),
                 "position_size": position_size,
-                "cvar_95": self._calculate_cvar(base_predictions),
+                "cvar_95": self._calculate_cvar(base_predictions, active_mask),
                 "effective_bets": effective_bets,
                 "emergency_mode": False,
                 "dynamic_thresholds": dynamic_thresholds[0].tolist(),
@@ -184,14 +191,19 @@ class EnsemblePredictor:
             return X.reshape(1, -1)
         return X
 
-    def _get_active_models(self) -> List[Dict[str, Any]]:
-        """Get models above confidence threshold."""
+    def _get_active_models(self) -> Tuple[List[Dict[str, Any]], int]:
+        """Get models with activity flags based on confidence threshold."""
         threshold = self.config.monitoring.min_confidence_threshold
-        return [
-            m
-            for m in self.components.base_models
-            if m.get("confidence", 0.0) >= threshold
-        ]
+        models: List[Dict[str, Any]] = []
+        active_count = 0
+        for model_info in self.components.base_models:
+            model_copy = dict(model_info)
+            is_active = model_copy.get("confidence", 0.0) >= threshold
+            model_copy["is_active"] = is_active
+            if is_active:
+                active_count += 1
+            models.append(model_copy)
+        return models, active_count
 
     async def _get_base_predictions(
         self, models: List[Dict[str, Any]], X: np.ndarray
@@ -285,7 +297,8 @@ class EnsemblePredictor:
         regime_features: np.ndarray,
         garch_vol: float,
         garch_forecast: float,
-        n_active: int,
+        total_models: int,
+        active_count: int,
     ) -> np.ndarray:
         """[FIX-4] Prepare meta-features for HyperNetwork."""
         recent_accuracy = 0.5
@@ -302,7 +315,7 @@ class EnsemblePredictor:
                 regime_features[3],  # Chaotic membership
                 garch_vol,
                 garch_forecast,
-                n_active / max(len(self.components.base_models), 1),
+                active_count / max(total_models, 1),
                 recent_accuracy,
             ]
         ).reshape(1, -1)
@@ -355,7 +368,10 @@ class EnsemblePredictor:
         return calibrated
 
     def _calculate_position_size(
-        self, ensemble_pred: np.ndarray, base_predictions: np.ndarray
+        self,
+        ensemble_pred: np.ndarray,
+        base_predictions: np.ndarray,
+        active_mask: np.ndarray,
     ) -> float:
         """[FIX-16] Kelly criterion + VaR position sizing."""
         p_up = float(ensemble_pred[1])
@@ -369,13 +385,23 @@ class EnsemblePredictor:
             np.clip(kelly_fraction, 0.0, self.config.risk.max_position_size)
         )
 
-        cvar = abs(self._calculate_cvar(base_predictions)) + 1e-6
+        cvar = abs(self._calculate_cvar(base_predictions, active_mask)) + 1e-6
         var_limit = self.config.risk.max_risk_per_trade / cvar
         return float(min(kelly_fraction, var_limit))
 
-    def _calculate_cvar(self, predictions: np.ndarray) -> float:
+    def _calculate_cvar(
+        self, predictions: np.ndarray, active_mask: Optional[np.ndarray] = None
+    ) -> float:
         """[FIX-16] Conditional Value at Risk (95%)."""
-        flat_preds = predictions.flatten()
+        if (
+            active_mask is not None
+            and active_mask.size == predictions.shape[1]
+            and np.sum(active_mask) > 0
+        ):
+            filtered = predictions[:, active_mask > 0.0]
+            flat_preds = filtered.flatten() if filtered.size else predictions.flatten()
+        else:
+            flat_preds = predictions.flatten()
         return float(np.percentile(flat_preds, self.config.risk.cvar_percentile))
 
     def _calculate_effective_bets(
@@ -386,6 +412,20 @@ class EnsemblePredictor:
         div_ratio = float(np.sqrt(norm_weights.T @ corr_matrix @ norm_weights))
         entropy = -float(np.sum(norm_weights * np.log(norm_weights + 1e-8)))
         return float(np.exp(entropy) / (div_ratio + 1e-6))
+
+    def _apply_active_mask(self, weights: np.ndarray, mask: np.ndarray) -> np.ndarray:
+        masked = weights * mask
+        total = masked.sum()
+        if total <= 0:
+            return self._uniform_weights(mask)
+        return masked / total
+
+    def _uniform_weights(self, mask: np.ndarray) -> np.ndarray:
+        if mask.size == 0:
+            return mask
+        if mask.sum() > 0:
+            return mask / mask.sum()
+        return np.ones_like(mask) / len(mask)
 
     def _get_current_garch_volatility(self) -> float:
         """Get current GARCH volatility estimate."""

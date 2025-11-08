@@ -63,14 +63,20 @@ class EnsembleTrainer:
         base_models = self._prune_models(base_models)
 
         # Train blender
-        blender = self._train_blender(base_models, X_train_full, y_train_full)
+        blender, blender_training_input = self._train_blender(
+            base_models, X_train_full, y_train_full
+        )
 
         # Train meta-regulator
-        meta = self._train_meta_regulator(blender, X_train_full, y_train_full)
+        meta = self._train_meta_regulator(
+            blender, blender_training_input, y_train_full
+        )
 
         # [FIX-10] OOS evaluation
-        oos_score = self._evaluate_oos(X_oos, y_oos, blender, meta)
-        if oos_score < 0.55:
+        oos_score = self._evaluate_oos(
+            X_oos, y_oos, base_models, blender, meta
+        )
+        if oos_score < self.config.min_oos_score:
             raise RuntimeError(f"[FIX-5] OOS validation failed: {oos_score:.3f}")
 
         # [FIX-19] Calculate correlation matrix
@@ -182,6 +188,7 @@ class EnsembleTrainer:
 
             return {
                 "model_id": model_info["id"],
+                "id": model_info["id"],
                 "model": final_model,
                 "performance": {"accuracy": avg_val},
                 "stress_performance": {"accuracy": avg_stress},
@@ -263,29 +270,24 @@ class EnsembleTrainer:
         """[FIX-2] Train stacking blender with time series CV."""
         blender_input = self._generate_oof_predictions(base_models, X, y)
 
-        estimators = [(m["id"], m["model"]) for m in base_models[: min(20, len(base_models))]]
-        if not estimators:
+        if not base_models:
             raise RuntimeError("No base models available after pruning")
 
-        blender = StackingClassifier(
-            estimators=estimators,
-            final_estimator=LGBMClassifier(
-                n_estimators=300,
-                max_depth=4,
-                learning_rate=0.02,
-                subsample=0.8,
-                colsample_bytree=0.8,
-            ),
-            cv=TimeSeriesSplit(n_splits=3),
-            passthrough=True,
-            n_jobs=-1,
-            stack_method="predict_proba",
+        blender = LGBMClassifier(
+            n_estimators=300,
+            max_depth=4,
+            learning_rate=0.02,
+            subsample=0.8,
+            colsample_bytree=0.8,
         )
-        return blender.fit(blender_input, y)
+        blender.fit(blender_input, y)
+        return blender, blender_input
 
-    def _train_meta_regulator(self, blender_model, X: np.ndarray, y: np.ndarray):
+    def _train_meta_regulator(
+        self, blender_model, blender_features: np.ndarray, y: np.ndarray
+    ):
         """[FIX-16] Train meta-regulator for risk management."""
-        blender_pred = blender_model.predict_proba(X)
+        blender_pred = blender_model.predict_proba(blender_features)
         meta_input = np.column_stack(
             [blender_pred, np.std(blender_pred, axis=1), np.var(blender_pred, axis=1)]
         )
@@ -335,6 +337,26 @@ class EnsembleTrainer:
 
         return oos_preds
 
+    def _generate_blender_features(
+        self, base_models: List[Dict[str, Any]], X: np.ndarray
+    ) -> np.ndarray:
+        """Generate stacked features from trained base models."""
+        if not base_models:
+            return np.zeros((len(X), 0))
+
+        features = np.zeros((len(X), len(base_models)))
+        for i, model_info in enumerate(base_models):
+            model = model_info["model"]
+            try:
+                if hasattr(model, "predict_proba"):
+                    features[:, i] = model.predict_proba(X)[:, 1]
+                else:
+                    features[:, i] = model.predict(X)
+            except Exception:  # pragma: no cover
+                features[:, i] = 0.5
+
+        return features
+
     def _evaluate_model(self, model, X: np.ndarray, y: np.ndarray) -> float:
         """Evaluate model on validation set."""
         if len(X) == 0:
@@ -362,12 +384,18 @@ class EnsembleTrainer:
             return 0.5
 
     def _evaluate_oos(
-        self, X: np.ndarray, y: np.ndarray, blender, meta
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        base_models: List[Dict[str, Any]],
+        blender,
+        meta,
     ) -> float:
         """Out-of-sample evaluation."""
         if len(X) == 0:
             return 0.5
-        blender_pred = blender.predict_proba(X)
+        blender_features = self._generate_blender_features(base_models, X)
+        blender_pred = blender.predict_proba(blender_features)
         meta_input = np.column_stack(
             [blender_pred, np.std(blender_pred, axis=1), np.var(blender_pred, axis=1)]
         )

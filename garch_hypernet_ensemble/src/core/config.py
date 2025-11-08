@@ -78,6 +78,7 @@ class EnsembleConfig:
     n_base_models: int = 64
     prune_threshold: float = 0.52
     model_version: str = "2.0.0"
+    min_oos_score: float = 0.55
 
 
 def _resolve_path(path: str) -> str:

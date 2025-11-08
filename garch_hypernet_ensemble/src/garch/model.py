@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import numpy as np
-from statsmodels.tsa.generic import GenericLikelihoodModel
+from statsmodels.base.model import GenericLikelihoodModel
 
 
 class GARCH11(GenericLikelihoodModel):

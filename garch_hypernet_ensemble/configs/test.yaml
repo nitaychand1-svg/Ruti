@@ -5,6 +5,7 @@ ensemble:
   enable_garch_forecast: false
   prune_threshold: 0.3
   model_version: "test"
+  min_oos_score: 0.0
 
 hypernet:
   meta_dim: 8

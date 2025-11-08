@@ -5,6 +5,7 @@ import asyncio
 import logging
 import time
 from collections import defaultdict, deque
+from functools import partial
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from multiprocessing import cpu_count
 from typing import Dict, Optional
@@ -24,7 +25,7 @@ class GARCHModelTracker:
         self.window = window
         self.min_obs = min_obs
         self.models: Dict[str, Optional[GARCH11]] = {}
-        self.returns_buffer: Dict[str, deque] = defaultdict(lambda: deque(maxlen=window))
+        self.returns_buffer: Dict[str, deque] = defaultdict(partial(deque, maxlen=window))
         self.last_fit_timestamp: Dict[str, float] = defaultdict(float)
         self.fit_interval = 3600  # 1 hour
         self.volatility_history = deque(maxlen=100)
