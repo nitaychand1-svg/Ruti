@@ -1,0 +1,43 @@
+# Test Configuration
+ensemble:
+  n_base_models: 16
+  garch_window: 50
+  garch_min_obs: 20
+  enable_garch_forecast: false
+
+hypernet:
+  meta_dim: 8
+  hidden_dims: [32, 16]
+  dropout: 0.1
+  learning_rate: 0.001
+  adaptation_rate: 0.05
+
+risk_management:
+  max_position_size: 0.25
+  max_risk_per_trade: 0.02
+  transaction_cost: 0.001
+  slippage_factor: 0.01
+
+pruning:
+  prune_threshold: 0.50
+  initial_max_correlation: 0.85
+  initial_min_confidence: 0.50
+
+monitoring:
+  window_size: 50
+  enable_shap: false
+  enable_prometheus: false
+  alert_webhook: ""
+  max_correlation_threshold: 0.85
+  min_confidence_threshold: 0.55
+  min_diversity_threshold: 0.25
+
+cache:
+  ttl_seconds: 60
+  maxsize: 100
+  redis_url: null
+
+logging:
+  level: DEBUG
+  format: text
+  output: "./logs"

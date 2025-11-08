@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  garch-ensemble:
+    build: .
+    container_name: garch-ensemble
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./logs:/var/log/garch_ensemble
+    environment:
+      - ENVIRONMENT=production
+      - ALERT_WEBHOOK=${ALERT_WEBHOOK:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    networks:
+      - ensemble-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: cache
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - ensemble-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    restart: unless-stopped
+    networks:
+      - ensemble-network
+
+volumes:
+  redis-data:
+  prometheus-data:
+
+networks:
+  ensemble-network:
+    driver: bridge

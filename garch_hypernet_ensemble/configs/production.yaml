@@ -1,0 +1,40 @@
+# Production Configuration
+ensemble:
+  n_base_models: 64
+  garch_window: 252
+  garch_min_obs: 100
+  enable_garch_forecast: true
+
+hypernet:
+  meta_dim: 8
+  hidden_dims: [64, 32]
+  dropout: 0.2
+  learning_rate: 0.001
+  adaptation_rate: 0.05
+
+risk_management:
+  max_position_size: 0.25
+  max_risk_per_trade: 0.02
+  transaction_cost: 0.001
+  slippage_factor: 0.01
+
+pruning:
+  prune_threshold: 0.52
+  initial_max_correlation: 0.85
+  initial_min_confidence: 0.55
+
+monitoring:
+  window_size: 100
+  enable_shap: true
+  enable_prometheus: true
+  alert_webhook: "${ALERT_WEBHOOK}"
+
+cache:
+  ttl_seconds: 300
+  maxsize: 1000
+  redis_url: "redis://cache:6379"
+
+logging:
+  level: INFO
+  format: json
+  output: "/var/log/garch_ensemble"
