@@ -1,0 +1,53 @@
+{
+  "version": "20251108_035558",
+  "git_hash": "2c495a97",
+  "file_hash": "6cf8a718b58043b76c1d47c315bd9bf76370c32a155555df4c8fa5eceb988f6c",
+  "created_at": "2025-11-08T03:55:58.843992",
+  "config": {
+    "garch": {
+      "window": 128,
+      "min_obs": 50,
+      "enable_forecast": false,
+      "fit_interval_seconds": 3600
+    },
+    "hypernet": {
+      "meta_dim": 8,
+      "hidden_dims": [
+        32,
+        16
+      ],
+      "dropout": 0.1,
+      "learning_rate": 0.001,
+      "adaptation_rate": 0.05,
+      "entropy_regularization": 0.01,
+      "correlation_penalty": 0.05
+    },
+    "risk": {
+      "max_position_size": 0.2,
+      "max_risk_per_trade": 0.01,
+      "transaction_cost": 0.001,
+      "slippage_factor": 0.01,
+      "cvar_percentile": 5
+    },
+    "monitoring": {
+      "window_size": 20,
+      "max_correlation_threshold": 0.8,
+      "min_confidence_threshold": 0.5,
+      "min_diversity_threshold": 0.2,
+      "enable_shap": false,
+      "enable_prometheus": false,
+      "alert_webhook": null,
+      "adaptation_rate": 0.05
+    },
+    "cache": {
+      "ttl_seconds": 60,
+      "maxsize": 128,
+      "redis_url": null
+    },
+    "n_base_models": 8,
+    "prune_threshold": 0.3,
+    "model_version": "test",
+    "min_oos_score": 0.0
+  },
+  "n_features": 10
+}
